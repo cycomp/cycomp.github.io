@@ -1,0 +1,27 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>Skype API connection test page</title>
+  <meta name="description" content="Skype API connection test page">
+  <meta name="author" content="Andrew Weighill">
+
+
+</head>
+
+<body>
+	<button type="button" id="connect_strava">Connect to Strava</button>
+
+
+<script>
+	
+	var connectStrava = document.getElementById("connect_strava");
+	connectStrava.addEventListener('click', function(event) {
+		console.log("redirect");
+		window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=http://localhost/exchange_token&approval_prompt=force&scope=read";
+	});
+</script>
+</body>
+</html>
