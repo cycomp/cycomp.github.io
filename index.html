@@ -16,12 +16,22 @@
 
 
 <script>
+	function runWhenPageLoaded() {
+		//code to be run when the page is loaded
+		var urlAddress = window.location.href;
+		console.log(urlAddress);
+
+	}
+	window.onload = runWhenPageLoaded;
+
 	
 	var connectStrava = document.getElementById("connect_strava");
 	connectStrava.addEventListener('click', function(event) {
 		console.log("redirect");
-		window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io/strava-uploader/&approval_prompt=force&scope=read";
+		window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io&approval_prompt=force&scope=read";
 	});
+	
+	
 </script>
 </body>
 </html>
