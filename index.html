@@ -18,9 +18,12 @@
 <script>
 	function runWhenPageLoaded() {
 		//code to be run when the page is loaded
-		var urlAddress = window.location.href;
-		console.log(urlAddress);
-
+		var urlString = window.location;
+		var urlParameters = (new URL(urlString)).searchParams;
+		var code = urlParameters.get('code');
+		var scope = urlParameters.get('scope');
+		console.log(code);
+		console.log(scope);
 	}
 	window.onload = runWhenPageLoaded;
 
