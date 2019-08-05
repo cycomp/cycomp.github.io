@@ -19,7 +19,6 @@
 	function getAccessToken(code, scope) {
 		console.log(code);
 		console.log(scope);
-		console.log(error);
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "https://www.strava.com/oauth/token?", true);
 		var data = {
@@ -42,10 +41,10 @@
 		var urlParameters = (new URL(urlString)).searchParams;
 		var code = urlParameters.get('code');
 		var scope = urlParameters.get('scope');
-		var error = urlParameters.get('error');
+		var err = urlParameters.get('error');
 		console.log(code);
 		console.log(scope);
-		console.log(error);
+		console.log(err);
 		if (code != null && scope != null) {
 			getAccessToken(code, scope);
 		}
