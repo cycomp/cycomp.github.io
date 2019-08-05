@@ -16,18 +16,33 @@
 
 
 <script>
+	function getAccessToken(code, scope) {
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "https://www.strava.com/oauth/token", true);
+		var urlEncodedData = "client_id=37683&client_secret=68670894f9fb4523eca81114bf9b2e3b303da3c0&code="+code+"grant_type=authorization_code";
+		xhr.addEventListener('load', function(event) {
+			console.log(xhr.responseText);
+		
+		});
+		xhr.send(urlEncodedData);
+		
+	}
+	
 	function runWhenPageLoaded() {
 		//code to be run when the page is loaded
-
 		var urlString = window.location;
 		var urlParameters = (new URL(urlString)).searchParams;
 		var code = urlParameters.get('code');
 		var scope = urlParameters.get('scope');
+		var error = urlParameters.get('error');
 		console.log(code);
 		console.log(scope);
+		console.log(error);
+		if (code != null && scope != null) {
+			getAccessToken(code, scope);
+		}
 	}
 	window.onload = runWhenPageLoaded;
-
 	
 	var connectStrava = document.getElementById("connect_strava");
 	connectStrava.addEventListener('click', function(event) {
