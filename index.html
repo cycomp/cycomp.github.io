@@ -21,7 +21,7 @@
 		console.log(scope);
 
 		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "https://www.strava.com/oauth/token", true);
+		xhr.open("POST", "https://www.strava.com/oauth/token?", true);
 		var urlEncodedData = "client_id=37683&client_secret=68670894f9fb4523eca81114bf9b2e3b303da3c0&code="+code+"grant_type=authorization_code";
 		xhr.addEventListener('load', function(event) {
 			console.log(xhr.responseText);
