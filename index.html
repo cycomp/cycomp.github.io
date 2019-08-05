@@ -19,15 +19,20 @@
 	function getAccessToken(code, scope) {
 		console.log(code);
 		console.log(scope);
-
+		console.log(error);
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "https://www.strava.com/oauth/token?", true);
-		var urlEncodedData = "client_id=37683&client_secret=68670894f9fb4523eca81114bf9b2e3b303da3c0&code="+code+"grant_type=authorization_code";
+		var data = {
+			"client_id":"37683",
+			"client_secret":"68670894f9fb4523eca81114bf9b2e3b303da3c0",
+			"code":"\""+code+"\"",
+			"grant_type":"authorization_code"
+		}
+		xhr.setRequestHeader('Content-Type', 'application/json');
 		xhr.addEventListener('load', function(event) {
 			console.log(xhr.responseText);
-		
 		});
-		xhr.send(urlEncodedData);
+		xhr.send(JSON.stringify(data));
 		
 	}
 	
@@ -37,10 +42,10 @@
 		var urlParameters = (new URL(urlString)).searchParams;
 		var code = urlParameters.get('code');
 		var scope = urlParameters.get('scope');
-		var err = urlParameters.get('error');
+		var error = urlParameters.get('error');
 		console.log(code);
 		console.log(scope);
-		console.log(err);
+		console.log(error);
 		if (code != null && scope != null) {
 			getAccessToken(code, scope);
 		}
