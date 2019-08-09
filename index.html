@@ -20,7 +20,7 @@
 	function getFileFromLocalStorage(key) {
 		var gpx_data = localStorage.getItem(key);
 		console.log(gpx_data);
-		file = new Blob(gpx_data);
+		file = new Blob([gpx_data]);
 		return file;
 	}
 	
