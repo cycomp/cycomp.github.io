@@ -38,7 +38,9 @@
 		data.append("commute", "0");
 		data.append("data_type", "gpx");
 		data.append("file", getFileFromLocalStorage(key));
-		
+		xhr.addEventListener('load', function(event)) {
+			console.log(xhr.responseText);
+		}
 		xhr.send(data);
 	}
 	
