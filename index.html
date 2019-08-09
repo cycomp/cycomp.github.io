@@ -16,7 +16,7 @@
 	<button type="button" id="upload_strava">Upload to Strava</button>
 
 
-<script>
+<script>	
 	function getFileFromLocalStorage(key) {
 		var gpx_data = localStorage.getItem(key);
 		console.log(gpx_data);
@@ -29,7 +29,7 @@
 		var responseObj = JSON.parse(responseJSON);
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "https://www.strava.com/api/v3/uploads", true);
-		xhr.setRequestHeader(Authorization, "Bearer: "+responseObj.access_token);
+		xhr.setRequestHeader("Authorization", "Bearer: "+responseObj.access_token);
 		var data = new FormData();
 		data.append("activity_type", "ride");
 		data.append("name", "test");
@@ -69,11 +69,11 @@
 		var urlParameters = (new URL(urlString)).searchParams;
 		var code = urlParameters.get('code');
 		var scope = urlParameters.get('scope');
+		var err = urlParameters.get('error');
 		var state = urlParameters.get('state');
 		console.log(code);
 		console.log(scope);
 		console.log(state);
-    
 		if (code != null && scope != null) {
 			getAccessToken(code, scope, state);
 		}
