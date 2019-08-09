@@ -12,20 +12,57 @@
 </head>
 
 <body>
-	<button type="button" id="connect_strava">Connect to Strava</button>
+	<input type="file" id="gpx_file" name="gpx_file" accept=".gpx">Select GPX file</input>
+	<button type="button" id="upload_strava">Upload to Strava</button>
 
 
 <script>
-	function getAccessToken(code, scope) {
+	var loggedIn = false;
+	
+	function getFileFromLocalStorage(key) {
+		var gpx_data = localStorage.getItem(key);
+		console.log(gpx_data);
+		file = new Blob(gpx_data);
+		return file;
+	}
+	
+	function uploadFile(responseJSON, key) {
+		console.log(responseJSON);
+		var responseObj = JSON.parse(responseJSON);
 		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "https://www.strava.com/oauth/token", true);
-		var urlEncodedData = "client_id=37683&client_secret=68670894f9fb4523eca81114bf9b2e3b303da3c0&code="+code+"grant_type=authorization_code";
+		xhr.open("POST", "https://www.strava.com/api/v3/uploads", true);
+		xhr.setRequestHeader(Authorization, "Bearer: "+responseObj.access_token);
+		var data = new FormData();
+		data.append("activity_type", "ride");
+		data.append("name", "test");
+		data.append("description", "Test Description");
+		data.append("trainer", "0");
+		data.append("commute", "0");
+		data.append("data_type", "gpx");
+		data.append("file", getFileFromLocalStorage(key));
+		
+		xhr.send(data);
+	}
+	
+	
+	
+	function getAccessToken(code, scope, key) {
+		console.log(code);
+		console.log(scope);
+		var xhr = new XMLHttpRequest();
+		xhr.open("POST", "https://www.strava.com/oauth/token?", true);
+		var data = {
+			"client_id":"37683",
+			"client_secret":"68670894f9fb4523eca81114bf9b2e3b303da3c0",
+			"code":code,
+			"grant_type":"authorization_code"
+		}
+		xhr.setRequestHeader('Content-Type', 'application/json');
 		xhr.addEventListener('load', function(event) {
 			console.log(xhr.responseText);
-		
+			uploadFile(xhr.responseText, key);
 		});
-		xhr.send(urlEncodedData);
-		
+		xhr.send(JSON.stringify(data));
 	}
 	
 	function runWhenPageLoaded() {
@@ -34,20 +71,36 @@
 		var urlParameters = (new URL(urlString)).searchParams;
 		var code = urlParameters.get('code');
 		var scope = urlParameters.get('scope');
-		var error = urlParameters.get('error');
+		var err = urlParameters.get('error');
+		var state = urlParameters.get('state');
 		console.log(code);
 		console.log(scope);
-		console.log(error);
+		console.log(state);
 		if (code != null && scope != null) {
-			getAccessToken(code, scope);
+			getAccessToken(code, scope, state);
 		}
 	}
 	window.onload = runWhenPageLoaded;
 	
-	var connectStrava = document.getElementById("connect_strava");
+	function getFile() {
+		var file = document.getElementById("gpx_file").files[0];
+		console.log(file);
+		var reader = new FileReader();
+		reader.onload = function(e) {
+			console.log(reader.result);
+			var key = Date.now();
+			localStorage.setItem(key, reader.result);
+			console.log("redirect");
+			window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io&approval_prompt=force&scope=activity:write&state="+key;
+		};
+		reader.readAsText(file);
+		
+	}
+	
+	
+	var connectStrava = document.getElementById("upload_strava");
 	connectStrava.addEventListener('click', function(event) {
-		console.log("redirect");
-		window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io&approval_prompt=force&scope=read";
+		getFile();
 	});
 	
 	
