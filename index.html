@@ -29,7 +29,7 @@
 		var responseObj = JSON.parse(responseJSON);
 		var xhr = new XMLHttpRequest();
 		xhr.open("POST", "https://www.strava.com/api/v3/uploads", true);
-		xhr.setRequestHeader("Authorization", "Bearer: "+responseObj.access_token);
+		xhr.setRequestHeader("Authorization", "Bearer "+responseObj.access_token);
 		var data = new FormData();
 		data.append("activity_type", "ride");
 		data.append("name", "test");
