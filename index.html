@@ -1,109 +1,650 @@
+
 <!doctype html>
 
 <html lang="en">
 <head>
   <meta charset="utf-8">
 
-  <title>Skype API connection test page</title>
-  <meta name="description" content="Skype API connection test page">
+  <title>Bike Computer</title>
+  <meta name="description" content="Browser Based Bike Computer">
   <meta name="author" content="Andrew Weighill">
+
+  <style>
+   body{
+      margin-top: 0;
+      margin-bottom: 0;
+      margin-left: 0;
+      margin-right: 0;
+   }
+
+   .whole_screen {
+      display: block;
+      border: 1px solid yellow;
+      height: 99vh;
+      text-align: center;
+   }
+
+   .grid_container {
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      grid-template-rows: 33% 33% 33%;
+      align-items: center;
+      justify-items: center;
+      width: 100%;
+      height: 100%;
+      gap: 0.1%;
+      background-color: black;
+   }
+   .box1 {
+      background-color: white;
+      grid-column-start: 1;
+      grid-column-end: 2;
+      grid-row-start: 1;
+      grid-row-end: 2;
+      width: 100%;
+      height: 100%;
+   }
+   .box2 {
+      background-color: white;
+      grid-column-start: 2;
+      grid-column-end: 3;
+      grid-row-start: 1;
+      grid-row-end: 2;
+      width: 100%;
+      height: 100%;
+   }
+   .box3 {
+      background-color: white;
+      grid-column-start: 3;
+      grid-column-end: 4;
+      grid-row-start: 1;
+      grid-row-end: 2;
+      width: 100%;
+      height: 100%;
+   }
+   .box4 {
+      background-color: white;
+      grid-column-start: 1;
+      grid-column-end: 2;
+      grid-row-start: 2;
+      grid-row-end: 3;
+      width: 100%;
+      height: 100%;
+   }
+   .box5 {
+      background-color: white;
+      grid-column-start: 2;
+      grid-column-end: 3;
+      grid-row-start: 2;
+      grid-row-end: 3;
+      width: 100%;
+      height: 100%;
+   }
+   .popup {
+      position: absolute;
+      background-color: yellow;
+      width: 200px ;
+      left: 0;
+      right: 0;
+      top: 10%;
+      margin-left: auto;
+      margin-right: auto;
+      max-width: 200px;
+      visibility: hidden;
+   }
+
+
+   </style>
 
 
 </head>
-
 <body>
-	<input type="file" id="gpx_file" name="gpx_file" accept=".gpx">Select GPX file</input>
-	<button type="button" id="upload_strava">Upload to Strava</button>
+<div class="whole_screen">
+   <div class="grid_container">
+      <div class="box1">
+         <h1 id="1_title">-</h1>
+         <h1 id="1_units">-</h1>
+         <h1 id="1_value">-</h1>
+      </div>
+      <div class="box2">
+         <h1 id="2_title">-</h1>
+         <h1 id="2_units">-</h1>
+         <h1 id="2_value">-</h1>
+      </div>
+      <div class="box3">
+         <h1 id="3_title">-</h1>
+         <h1 id="3_units">-</h1>
+         <h1 id="3_value">-</h1>
+      </div>
+      <div class="box4">
+         <h1>Record</h1>
+         <button type="button" id="record">Start Recording</button>
+      </div>
+      <div class="box5">
+         <button type="button" id="connect_sensor">Connect Sensors</button>
+      </div>
+   </div>
+   <div class="popup" id="popup_box">
+      <h2>Save File</h2>
+      <div>
+         <input type="checkbox" id="strava" name="gpxAction" value="strava">
+         <label for="strava">Upload to Strava</label>
+      </div>
+      <div>
+         <input type="checkbox" id="device" name="gpxAction" value="device">
+         <label for="device">Save on Device</label>
+      </div>
+      <button type="button" id="next">Next</button>
+   </div>
+</div>
+
+<script>
+
+   function Recorder() {
+      var tempArray = [];
+      var dataArray = [];
+      var recording = false;
+      var timerHandle = null;
+      var db;
+
+      function recordData() {
+         tempArray["timestamp"] = Math.floor(Date.now());
+
+         var index = dataArray.length;
+         dataArray[index] = {};
+
+         for (var title in tempArray) {
+            dataArray[index][title] = tempArray[title];
+         }
+
+         //console.log(tempArray);
+
+         //indexeddb
+         var transaction = db.transaction("tempData", "readwrite");
+         transaction.oncomplete = function(event) {
+            //console.log("all done!");
+         }
+
+         var objectStore = transaction.objectStore("tempData");
+         var request = objectStore.add(tempArray);
+         request.onsuccess = function(event) {
+            //console.log("field added successfuly");
+         };
+      }
+
+      function clearDB() {
+         var transaction = db.transaction("tempData", "readwrite");
+         transaction.oncomplete = function(event) {
+            console.log("objectStore Cleared!");
+         };
+         var objectStore = transaction.objectStore("tempData");
+         var request = objectStore.clear();
+      }
+
+      function retrieveCurrentTotals(index) {
+         var transaction = db.transaction("tempData", "readonly");
+         var objectStore = transaction.objectStore("tempData");
+         objectStore.openCursor(null, "prev").onsuccess = function(event) {
+            var cursor = event.target.result
+            if (cursor) {
+               console.log("Key "+cursor.key)
+               console.dir(cursor.value);
+               var currentTotals = cursor.value;
+               var distance = currentTotals["Distance"];
+               myDistanceCalculator.addRetrievedDistanceService(distance);
+            }
+         }
+      }
+
+      function initialiseDB() {
+         //open database
+         console.log("openDB");
+
+         var request = window.indexedDB.open("tempStorageDB", 1);
+
+         request.onerror = function(event) {
+            console.log(event.target.errorCode);
+         };
+
+         request.onsuccess = function(event) {
+            db = event.target.result;
+
+            var transaction = db.transaction("tempData", "readonly");
+            var objectStore = transaction.objectStore("tempData");
+            var request = objectStore.count();
+            request.onsuccess = function() {
+               console.log(request.result);
+               if (request.result > 0) {
+                  var resume = confirm("Temporary data found. Resume previous recording?");
+                  if (resume) {
+                     //fetch latest distance value and send it to myDistanceCalculator
+                     retrieveCurrentTotals(request.result);
+                  } else {
+                     var save = confirm("Save previous recording?")
+                     if (save) {
+                        saveDialogue();
+                     } else {
+                        clearDB();
+                     }
+                  }
+               }
+            };
+
+         };
 
 
-<script>	
-	function getFileFromLocalStorage(key) {
-		var gpx_data = localStorage.getItem(key);
-		console.log(gpx_data);
-		file = new Blob([gpx_data]);
-		return file;
+         request.onupgradeneeded = function(event) {
+            console.log("onupgradeneeded");
+
+            objectStore = event.currentTarget.result.createObjectStore("tempData", {autoIncrement : true});
+         };
+      }
+
+      var nextButton = document.getElementById("next");
+      nextButton.addEventListener('click', function(event) {
+         processSaveDialogue();
+      });
+
+      function saveDialogue() {
+         var popupBox = document.getElementById("popup_box");
+         popupBox.style.visibility = "visible";
+      }
+
+      function processSaveDialogue() {
+         console.log("processSaveDialogue");
+
+         device = document.getElementById("device");
+         strava = document.getElementById("strava");
+
+         saveFile(strava.checked, device.checked);
+
+
+         if(device.checked) {
+            console.log("save to device");
+         }
+
+
+         if(strava.checked) {
+            console.log("upload to strava");
+         }
+
+
+      }
+
+
+
+      function saveFile(strava, device) {
+         var dbDataArray = [];
+
+         var transaction = db.transaction("tempData", "readwrite");
+         var objectStore = transaction.objectStore("tempData");
+         objectStore.getAll().onsuccess = function(event) {
+            dbDataArray = event.target.result;
+            console.log("dbDataArray length: " + dbDataArray.length);
+            console.log("dataArray length: "+dataArray.length);
+            console.dir(dbDataArray);
+            console.dir(dataArray);
+
+            var gpxString = "<?xml version=\"1.0\" encoding=\"UTF-8\"?><gpx version=\"1.1\" creator=\"https://cycomp.github.io/\" xmlns=\"http://www.topografix.com/GPX/1/1\" xmlns:gpxdata=\"http://www.cluetrust.com/XML/GPXDATA/1/0\"><trk><name>Test Track</name><trkseg>";
+            var numPoints = dbDataArray.length;
+            var n;
+            var trkpt
+            var extensions;
+            for(n=0; n<numPoints; n++) {
+               var utcTimestamp = (new Date(dbDataArray[n]["timestamp"])).toISOString();
+               console.log(utcTimestamp);
+               trkpt = "<trkpt lat=\""+dbDataArray[n]["Latitude"]+"\" lon=\""+dbDataArray[n]["Longitude"]+"\"><time>"+utcTimestamp+"</time>";
+               if(dbDataArray[n]["Heart Rate"]) {
+                  extensions = "<extensions><gpxdata:hr>"+dbDataArray[n]["Heart Rate"]+"</gpxdata:hr></extensions>";
+               } else {
+                  extensions = "";
+               }
+               trkpt = trkpt + extensions + "</trkpt>";
+               gpxString = gpxString + trkpt;
+            }
+            gpxString = gpxString+"</trkseg></trk></gpx>";
+
+            if(device) {
+              if ('Blob' in window) {
+                 var fileName = prompt('Please enter file name to save', 'myride.gpx');
+                 if (fileName) {
+                    var textFileAsBlob = new Blob([gpxString], { type: 'text/plain' });
+
+                    if ('msSaveOrOpenBlob' in navigator) {
+                       navigator.msSaveOrOpenBlob(textFileAsBlob, fileName);
+                    } else {
+                       var downloadLink = document.createElement('a');
+                       downloadLink.download = fileName;
+                       downloadLink.innerHTML = 'Download File';
+                       if ('webkitURL' in window) {
+                          // Chrome allows the link to be clicked without actually adding it to the DOM.
+                          downloadLink.href = window.webkitURL.createObjectURL(textFileAsBlob);
+                       } else {
+                          // Firefox requires the link to be added to the DOM before it can be clicked.
+                          downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+                          downloadLink.onclick = destroyClickedElement;
+                          downloadLink.style.display = 'none';
+                          document.body.appendChild(downloadLink);
+                       }
+                       downloadLink.click();
+                    }
+                  }
+               } else {
+                  alert('Your browser does not support HTML5 file saving.');
+               }
+            }
+            if(strava) {
+               stravaUpload(gpxString);
+            } else {
+				clearDB();
+			}
+
+         }
+      }
+
+      function toggleRecording() {
+         recording = !recording;
+         var recordButton = document.getElementById("record");
+         if (recording) {
+            initialiseDB();
+            timerHandle = setInterval(recordData, 1000);
+            recordButton.innerHTML = "Stop Recording";
+         } else {
+            clearInterval(timerHandle);
+            saveDialogue();
+            recordButton.innerHTML = "Start Recording";
+         }
+      }
+
+      function receiveData(title, value) {
+         tempArray[title] = value;
+      }
+
+      this.toggleRecordingService = function() {
+         toggleRecording();
+      }
+
+      this.receiveDataService = function(title, value) {
+         receiveData(title, value);
+      }
+
+
+   }
+
+   function DistanceCalculator() {
+      var previousLat = null;
+      var previousLon = null;
+      var totalDistance = 0;
+
+      function addRetrievedDistance (distance) {
+         totalDistance = totalDistance + distance;
+         distanceItem.updateValue(totalDistance);
+      }
+
+      function calcDistance(currentLat, currentLon) {
+         console.log("currentLat: "+currentLat)
+         console.log("currentLat: "+currentLon)
+         console.log("previousLat: "+previousLat)
+         console.log("previousLon: "+previousLon)
+
+         if (previousLat !== null) {
+            //lon = East/West - closer together as you get closer to the poles
+            var avgLatDegrees = (currentLat+previousLat)/2;
+            var avgLatRadians = (avgLatDegrees*Math.PI)/180;
+            var dx = 111.1949266 * (Math.cos(avgLatRadians)) * (currentLon-previousLon);
+            //lat = North/South - constant spacing
+            var dy = 111.1949266*(currentLat-previousLat);
+            var distance = Math.sqrt((dx*dx)+(dy*dy));
+            totalDistance = totalDistance+distance;
+            distanceItem.updateValue(totalDistance);
+         }
+         //update previous lat/lon values
+         previousLat = currentLat;
+         previousLon = currentLon;
+
+      }
+
+      this.calcDistanceService = function(lat, lon) {
+         calcDistance(lat, lon);
+      }
+
+      this.addRetrievedDistanceService = function(distance) {
+         addRetrievedDistance(distance);
+      }
+
+
+
+   }
+
+
+
+   function Item() {
+      var box;
+      var title;
+      var units;
+
+      function displayMyself(value) {
+         var roundedValue = Math.round(value*100)/100;
+         var valueText = document.getElementById(box+"_value");
+         valueText.innerHTML = roundedValue;
+      }
+
+      function initialiseMyself(new_box, new_title, new_units) {
+         box = new_box;
+         title = new_title;
+         units = new_units;
+
+         console.log(box, title, units);
+         if(box !== null) {
+            var titleText = document.getElementById(box+"_title");
+            titleText.innerHTML = title;
+
+            var unitsText = document.getElementById(box+"_units");
+            unitsText.innerHTML = units;
+         }
+
+      }
+
+      this.initialise = function(box, title, units) {
+         initialiseMyself(box, title, units);
+      }
+
+      this.updateValue = function(value) {
+         //console.log(title+": "+value);
+         if (myRecorder) {
+            myRecorder.receiveDataService(title, value);
+         }
+         if (box !== null) {
+            displayMyself(value);
+         }
+      }
+   }
+
+   document.addEventListener("DOMContentLoaded", function() {
+      console.log("DOMContentLoaded");
+
+      //check to see if we are mid-strava upload;
+      var urlString = window.location;
+      var urlParameters = (new URL(urlString)).searchParams;
+      var code = urlParameters.get('code');
+      var scope = urlParameters.get('scope');
+      var err = urlParameters.get('error');
+      var state = urlParameters.get('state');
+      console.log(code);
+      console.log(scope);
+      console.log(state);
+      if (code != null && scope != null) {
+         getAccessToken(code, scope, state);
+      }
+
+
+
+
+
+      myRecorder = new Recorder();
+      var recordButton = document.getElementById("record");
+      recordButton.addEventListener('click', function(event) {
+         myRecorder.toggleRecordingService();
+         myDistanceCalculator = new DistanceCalculator();
+      });
+
+      distanceItem = new Item();
+      distanceItem.initialise("3", "Distance", "km" );
+      console.log("hello");
+
+      if (navigator.geolocation) {
+         console.log("beginning location watch");
+         startLocationWatch();
+      } else {
+         //geolocation not supported
+         console.log("geolocation not supported");
+      }
+   });
+
+   function handleCharacteristicValueChanged(event) {
+      var value = event.target.value;
+      let flags = value.getUint8(0);
+
+      if (flags & 0x1) {
+         var rate16bits = true;
+      } else {
+         var rate16bits = false;
+      }
+
+      if (rate16bits) {
+         var hrNumber = value.getUint16(1,true);
+      } else {
+         var hrNumber = value.getUint8(1);
+      }
+
+      hrItem.updateValue(hrNumber);
+   }
+
+
+   function connectSensor() {
+      navigator.bluetooth.requestDevice({ filters: [{ services: ['heart_rate'] }] })
+         .then(device => device.gatt.connect())
+         .then(server => server.getPrimaryService('heart_rate'))
+         .then(service => service.getCharacteristic('heart_rate_measurement'))
+         .then(characteristic => characteristic.startNotifications())
+         .then(characteristic => {
+            characteristic.addEventListener('characteristicvaluechanged',
+                                    handleCharacteristicValueChanged);
+            })
+         .catch(error => {console.log("Name: "+error.name+" Message: "+error.message);});
+   }
+
+   var button = document.getElementById("connect_sensor");
+   button.addEventListener('click', function(event) {
+      connectSensor();
+      hrItem = new Item();
+      hrItem.initialise("1", "Heart Rate", "bpm");
+   });
+
+
+   function startLocationWatch() {
+      var options = {
+                  enableHighAccuracy : true,
+                  timeout : Infinity,
+                  maximumAge : 0
+               };
+      navigator.geolocation.watchPosition(showPosition, showError, options);
+
+      speedItem = new Item();
+      speedItem.initialise("2", "Speed", "kph");
+
+      latItem = new Item();
+      latItem.initialise(null, "Latitude", "degrees");
+
+
+      longItem = new Item();
+      longItem.initialise(null, "Longitude", "degrees");
+
+
+
+   }
+
+   function showPosition(position) {
+      speedItem.updateValue(position.coords.speed*3.6);
+
+      latItem.updateValue(position.coords.latitude);
+      longItem.updateValue(position.coords.longitude);
+
+      if (typeof myDistanceCalculator !== "undefined") {
+         myDistanceCalculator.calcDistanceService(position.coords.latitude, position.coords.longitude);
+      } else {
+         console.log("mydistancecalculator not created yet");
+      }
+   }
+
+   function showError(error) {
+      switch(error.code) {
+         case error.PERMISSION_DENIED:
+            alert("User denied the request for Geolocation.");
+            break;
+         case error.POSITION_UNAVAILABLE:
+            alert("Location information is unavailable.");
+            break;
+         case error.TIMEOUT:
+            alert("The request to get user location timed out.");
+            break;
+         case error.UNKNOWN_ERROR:
+            alert("An unknown error occurred.");
+            break;
+      }
+   }
+
+
+   function stravaUpload(gpxString) {
+      var key = Date.now();
+      localStorage.setItem(key, gpxString);
+      console.log("redirect to strava oauth login");
+      window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io&approval_prompt=force&scope=activity:write&state="+key;
 	}
-	
-	function uploadFile(responseJSON, key) {
-		console.log(responseJSON);
-		var responseObj = JSON.parse(responseJSON);
-		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "https://www.strava.com/api/v3/uploads", true);
-		xhr.setRequestHeader("Authorization", "Bearer "+responseObj.access_token);
-		var data = new FormData();
-		data.append("activity_type", "ride");
-		data.append("name", "test");
-		data.append("description", "Test Description");
-		data.append("trainer", "0");
-		data.append("commute", "0");
-		data.append("data_type", "gpx");
-		data.append("file", getFileFromLocalStorage(key));
-		xhr.addEventListener('load', function(event) {
-			console.log(xhr.responseText);
-		});
-		xhr.send(data);
-	}
-	
-	
-	
-	function getAccessToken(code, scope, key) {
-		console.log(code);
-		console.log(scope);
-		var xhr = new XMLHttpRequest();
-		xhr.open("POST", "https://www.strava.com/oauth/token?", true);
-		var data = {
-			"client_id":"37683",
-			"client_secret":"68670894f9fb4523eca81114bf9b2e3b303da3c0",
-			"code":code,
-			"grant_type":"authorization_code"
-		}
-		xhr.setRequestHeader('Content-Type', 'application/json');
-		xhr.addEventListener('load', function(event) {
-			console.log(xhr.responseText);
-			uploadFile(xhr.responseText, key);
-		});
-		xhr.send(JSON.stringify(data));
-	}
-	
-	function runWhenPageLoaded() {
-		//code to be run when the page is loaded
-		var urlString = window.location;
-		var urlParameters = (new URL(urlString)).searchParams;
-		var code = urlParameters.get('code');
-		var scope = urlParameters.get('scope');
-		var err = urlParameters.get('error');
-		var state = urlParameters.get('state');
-		console.log(code);
-		console.log(scope);
-		console.log(state);
-		if (code != null && scope != null) {
-			getAccessToken(code, scope, state);
-		}
-	}
-	window.onload = runWhenPageLoaded;
-	
-	function getFile() {
-		var file = document.getElementById("gpx_file").files[0];
-		console.log(file);
-		var reader = new FileReader();
-		reader.onload = function(e) {
-			console.log(reader.result);
-			var key = Date.now();
-			localStorage.setItem(key, reader.result);
-			console.log("redirect");
-			window.location.href = "https://www.strava.com/oauth/authorize?client_id=37683&response_type=code&redirect_uri=https://cycomp.github.io&approval_prompt=force&scope=activity:write&state="+key;
-		};
-		reader.readAsText(file);
-		
-	}
-	
-	
-	var connectStrava = document.getElementById("upload_strava");
-	connectStrava.addEventListener('click', function(event) {
-		getFile();
-	});
-	
-	
+
+   function getAccessToken(code, scope, key) {
+      console.log(code);
+      console.log(scope);
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://www.strava.com/oauth/token?", true);
+      var data = {
+         "client_id":"37683",
+         "client_secret":"68670894f9fb4523eca81114bf9b2e3b303da3c0",
+         "code":code,
+         "grant_type":"authorization_code"
+      }
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.addEventListener('load', function(event) {
+         console.log(xhr.responseText);
+         uploadFile(xhr.responseText, key);
+      });
+      xhr.send(JSON.stringify(data));
+   }
+
+   function uploadFile(responseJSON, key) {
+      console.log(responseJSON);
+      var responseObj = JSON.parse(responseJSON);
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "https://www.strava.com/api/v3/uploads", true);
+      xhr.setRequestHeader("Authorization", "Bearer "+responseObj.access_token);
+      var data = new FormData();
+      data.append("activity_type", "ride");
+      data.append("name", "test");
+      data.append("description", "Test Description");
+      data.append("trainer", "0");
+      data.append("commute", "0");
+      data.append("data_type", "gpx");
+      data.append("file", getFileFromLocalStorage(key));
+      xhr.addEventListener('load', function(event) {
+         console.log(xhr.responseText);
+      });
+      xhr.send(data);
+      clearDB();
+   }
+
+
+
+
+
 </script>
-</body>
-</html>
+
